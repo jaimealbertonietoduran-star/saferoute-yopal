@@ -1,125 +1,46 @@
-import React, { useState, useEffect, useRef, useCallback } from 'react';
-import { StyleSheet, View, Text, Alert, AppState, TouchableOpacity } from 'react-native';
-import MapView, { Circle } from 'react-native-maps';
-import * as Location from 'expo-location';
+import React, { useState } from 'react';
+import { StyleSheet, View, Text, Alert, TouchableOpacity, Platform } from 'react-native';
 import { usePuntosCriticos } from './hooks/usePuntosCriticos';
-import { pedirPermisosNotificaciones, dispararAlertaVial } from './notifications/alertaVial';
-import { getNivelActual } from './utils/nivelRiesgo';
+import { useZonasRiesgo } from './hooks/useZonasRiesgo';
+import { useGPSTracking } from './hooks/useGPSTracking';
+import { pedirPermisosNotificaciones } from './notifications/alertaVial';
 import Emergencias from './components/Emergencias';
 
-// GPS en primer plano — precisión normal
-const GPS_FOREGROUND = {
-  accuracy: Location.Accuracy.Balanced,
-  timeInterval: 8000,
-  distanceInterval: 10,
-};
-
-// GPS en segundo plano — ahorro de batería
-const GPS_BACKGROUND = {
-  accuracy: Location.Accuracy.Low,
-  timeInterval: 30000,
-  distanceInterval: 50,
-};
+let MapView, Circle;
+if (Platform.OS !== 'web') {
+  const Maps = require('react-native-maps');
+  MapView = Maps.default;
+  Circle = Maps.Circle;
+}
 
 export default function App() {
-  const [location, setLocation] = useState(null);
   const [mostrarEmergencias, setMostrarEmergencias] = useState(false);
-  const [enBackground, setEnBackground] = useState(false);
+  const { puntos, cargando, error, getPuntosCercanos } = usePuntosCriticos();
+  const { verificarZonas } = useZonasRiesgo(getPuntosCercanos);
+  const { location, enBackground, permisoDenegado, errorGPS, reintentarPermiso } = useGPSTracking(verificarZonas);
 
-  const subscriptionRef = useRef(null);
-  const alertaActivaRef = useRef(new Set());
-  const ultimoCheckRef = useRef(0);
-  const appStateRef = useRef(AppState.currentState);
-
-  const { puntos, cargando, error } = usePuntosCriticos();
-
-  const calcularDistancia = useCallback((lat1, lon1, lat2, lon2) => {
-    const R = 6371;
-    const dLat = (lat2 - lat1) * (Math.PI / 180);
-    const dLon = (lon2 - lon1) * (Math.PI / 180);
-    const a =
-      Math.sin(dLat / 2) ** 2 +
-      Math.cos(lat1 * (Math.PI / 180)) * Math.cos(lat2 * (Math.PI / 180)) *
-      Math.sin(dLon / 2) ** 2;
-    return R * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+  React.useEffect(() => {
+    pedirPermisosNotificaciones().catch(() => {});
   }, []);
 
-  const verificarZonas = useCallback((userCoords) => {
-    const ahora = Date.now();
-    if (ahora - ultimoCheckRef.current < 8000) return;
-    ultimoCheckRef.current = ahora;
-
-    const dentroAhora = new Set();
-
-    puntos.forEach(punto => {
-      const distanciaMetros = calcularDistancia(
-        userCoords.latitude, userCoords.longitude,
-        punto.latitude, punto.longitude
-      ) * 1000;
-
-      if (distanciaMetros <= punto.radius) {
-        dentroAhora.add(punto.id);
-        if (!alertaActivaRef.current.has(punto.id)) {
-          const { nivel, mensaje } = getNivelActual(punto);
-          dispararAlertaVial(punto.nombre, nivel, mensaje);
-        }
-      }
-    });
-
-    alertaActivaRef.current = dentroAhora;
-  }, [calcularDistancia, puntos]);
-
-  // Función reutilizable para iniciar GPS con cualquier config
-  const iniciarGPS = useCallback(async (config) => {
-    if (subscriptionRef.current) {
-      subscriptionRef.current.remove();
-      subscriptionRef.current = null;
+  const handleReintentar = async () => {
+    const ok = await reintentarPermiso();
+    if (!ok) {
+      Alert.alert('Permiso denegado', 'Activa el permiso de ubicación desde Ajustes para usar SafeRoute.');
     }
-    subscriptionRef.current = await Location.watchPositionAsync(
-      config,
-      (newLocation) => {
-        setLocation(newLocation.coords);
-        verificarZonas(newLocation.coords);
-      }
+  };
+
+  if (permisoDenegado) {
+    return (
+      <View style={styles.loading}>
+        <Text style={styles.textLoading}>📍 Permiso de ubicación requerido</Text>
+        <Text style={styles.textSub}>SafeRoute necesita GPS para funcionar.</Text>
+        <TouchableOpacity style={styles.btnReintentar} onPress={handleReintentar}>
+          <Text style={styles.txtBtnReintentar}>Conceder permiso</Text>
+        </TouchableOpacity>
+      </View>
     );
-  }, [verificarZonas]);
-
-  // Optimizador de batería — detecta cuando la app va a segundo plano
-  useEffect(() => {
-    const sub = AppState.addEventListener('change', async (nextState) => {
-      if (appStateRef.current === 'active' && nextState.match(/inactive|background/)) {
-        setEnBackground(true);
-        await iniciarGPS(GPS_BACKGROUND); // reduce frecuencia GPS
-      } else if (appStateRef.current.match(/inactive|background/) && nextState === 'active') {
-        setEnBackground(false);
-        await iniciarGPS(GPS_FOREGROUND); // restaura precisión normal
-      }
-      appStateRef.current = nextState;
-    });
-    return () => sub.remove();
-  }, [iniciarGPS]);
-
-  // Inicio de la app
-  useEffect(() => {
-    const iniciar = async () => {
-      const { status } = await Location.requestForegroundPermissionsAsync();
-      if (status !== 'granted') {
-        Alert.alert('Permisos requeridos', 'SafeRoute necesita GPS para funcionar.');
-        return;
-      }
-      await pedirPermisosNotificaciones();
-      await iniciarGPS(GPS_FOREGROUND);
-    };
-
-    iniciar();
-
-    return () => {
-      if (subscriptionRef.current) {
-        subscriptionRef.current.remove();
-        subscriptionRef.current = null;
-      }
-    };
-  }, [iniciarGPS]);
+  }
 
   if (cargando) {
     return (
@@ -140,7 +61,11 @@ export default function App() {
 
   return (
     <View style={styles.container}>
-      {location ? (
+      {Platform.OS === 'web' ? (
+        <View style={styles.loading}>
+          <Text style={styles.textLoading}>Mapa no disponible en web</Text>
+        </View>
+      ) : location ? (
         <MapView
           style={styles.map}
           initialRegion={{
@@ -169,14 +94,18 @@ export default function App() {
         </View>
       )}
 
-      {/* Badge modo ahorro */}
+      {errorGPS && (
+        <View style={styles.badgeError}>
+          <Text style={styles.txtBadge}>{errorGPS}</Text>
+        </View>
+      )}
+
       {enBackground && (
         <View style={styles.badgeBateria}>
           <Text style={styles.txtBadge}>🔋 Modo ahorro activo</Text>
         </View>
       )}
 
-      {/* Botón flotante de emergencias */}
       <TouchableOpacity
         style={styles.fab}
         onPress={() => setMostrarEmergencias(true)}
@@ -185,7 +114,6 @@ export default function App() {
         <Text style={styles.fabTexto}>🆘</Text>
       </TouchableOpacity>
 
-      {/* Modal emergencias */}
       <Emergencias
         visible={mostrarEmergencias}
         onCerrar={() => setMostrarEmergencias(false)}
@@ -197,9 +125,11 @@ export default function App() {
 const styles = StyleSheet.create({
   container: { flex: 1 },
   map: { width: '100%', height: '100%' },
-  loading: { flex: 1, justifyContent: 'center', alignItems: 'center', backgroundColor: '#f5f5f5' },
-  textLoading: { fontSize: 18, fontWeight: 'bold', color: '#333' },
-  textSub: { fontSize: 14, color: '#666', marginTop: 5 },
+  loading: { flex: 1, justifyContent: 'center', alignItems: 'center', backgroundColor: '#f5f5f5', padding: 20 },
+  textLoading: { fontSize: 18, fontWeight: 'bold', color: '#333', textAlign: 'center' },
+  textSub: { fontSize: 14, color: '#666', marginTop: 5, textAlign: 'center' },
+  btnReintentar: { marginTop: 20, backgroundColor: '#cc0000', paddingHorizontal: 24, paddingVertical: 12, borderRadius: 8 },
+  txtBtnReintentar: { color: '#fff', fontWeight: 'bold', fontSize: 15 },
   fab: {
     position: 'absolute',
     bottom: 30,
@@ -225,6 +155,16 @@ const styles = StyleSheet.create({
     paddingHorizontal: 12,
     paddingVertical: 6,
     borderRadius: 20,
+  },
+  badgeError: {
+    position: 'absolute',
+    top: 100,
+    alignSelf: 'center',
+    backgroundColor: 'rgba(204,0,0,0.85)',
+    paddingHorizontal: 12,
+    paddingVertical: 6,
+    borderRadius: 20,
+    maxWidth: '85%',
   },
   txtBadge: { color: '#fff', fontSize: 12 },
 });

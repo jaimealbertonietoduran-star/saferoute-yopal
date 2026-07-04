@@ -1,2 +1,8 @@
 node_modules/
 .env
+.expo/
+*.log
+ios/
+android/
+.DS_Store
+firebase-debug.log
