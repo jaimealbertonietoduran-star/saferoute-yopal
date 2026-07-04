@@ -8,7 +8,7 @@ App móvil de alertas de accidentes viales en tiempo real para Yopal, Casanare.
 - Geofencing
 
 ## Estado
-Proyecto académico - UNISANGIL · Calificación: 4.5/5
+Proyecto académico - UNISANGIL ·
 
 ## Autor
 Jaime Nieto · jaimealbertonietoduran@gmail.com
