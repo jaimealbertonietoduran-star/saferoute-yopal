@@ -13,7 +13,7 @@ const NUMEROS = [
 ];
 
 export default function Emergencias({ visible, onCerrar }) {
-  const llamar = (numero) => Linking.openURL(`tel:${numero}`);
+ const llamar = (numero) => Linking.openURL(`tel:${numero}`).catch(() => {});
 
   return (
     <Modal visible={visible} animationType="slide" transparent onRequestClose={onCerrar}>

@@ -1,6 +1,6 @@
 import * as Notifications from 'expo-notifications';
 import * as Haptics from 'expo-haptics';
-import { Alert, Vibration } from 'react-native';
+import { Alert, Vibration, Platform } from 'react-native';
 import { getConfigNivel } from '../utils/nivelRiesgo';
 
 Notifications.setNotificationHandler({
@@ -46,6 +46,7 @@ export const dispararAlertaVial = async (nombreZona, nivel = 1, mensajePersonali
           ? Notifications.AndroidNotificationPriority.MAX
           : Notifications.AndroidNotificationPriority.HIGH,
         vibrate: config.vibracion,
+        ...(Platform.OS === 'android' && { channelId: 'alertas-viales' }),
       },
       trigger: null,
     });

@@ -16,10 +16,16 @@ export const usePuntosCriticos = () => {
     const cargar = async () => {
       try {
         const snapshot = await getDocs(collection(db, 'puntos_criticos'));
-        const datos = snapshot.docs.map(doc => ({
-          id: doc.id,
-          ...doc.data()
-        }));
+        const crudos = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+        const datos = crudos.filter(p =>
+          typeof p.latitude === 'number' &&
+          typeof p.longitude === 'number' &&
+          typeof p.radius === 'number' &&
+          p.radius > 0
+        );
+        if (__DEV__ && datos.length < crudos.length) {
+          console.warn(`usePuntosCriticos: ${crudos.length - datos.length} puntos descartados por datos inválidos`);
+        }
         if (activo) setPuntos(datos);
       } catch (e) {
         if (activo) setError('No se pudieron cargar las zonas de riesgo. Revisa tu conexión.');

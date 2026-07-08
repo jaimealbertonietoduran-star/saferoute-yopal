@@ -24,7 +24,7 @@ export const useGPSTracking = (onLocationUpdate) => {
 
   const subscriptionRef = useRef(null);
   const appStateRef = useRef(AppState.currentState);
-
+  const locationRef = useRef(null);
   const iniciarGPS = useCallback(async (config) => {
     try {
       if (subscriptionRef.current) {
@@ -32,7 +32,9 @@ export const useGPSTracking = (onLocationUpdate) => {
         subscriptionRef.current = null;
       }
       subscriptionRef.current = await Location.watchPositionAsync(config, (newLocation) => {
+        locationRef.current = newLocation.coords;
         setLocation(newLocation.coords);
+        setErrorGPS(null);
         onLocationUpdate(newLocation.coords);
       });
       setErrorGPS(null);
@@ -84,7 +86,14 @@ export const useGPSTracking = (onLocationUpdate) => {
       }
     };
   }, [iniciarGPS]);
-
+useEffect(() => {
+    const t = setTimeout(() => {
+      if (!locationRef.current) {
+        setErrorGPS('Señal GPS débil. Sal a un área abierta.');
+      }
+    }, 15000);
+    return () => clearTimeout(t);
+  }, []);
   const reintentarPermiso = async () => {
     try {
       const { status } = await Location.requestForegroundPermissionsAsync();
