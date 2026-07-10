@@ -2,7 +2,7 @@ import { initializeApp } from 'firebase/app';
 import { getFirestore } from 'firebase/firestore';
 
 const firebaseConfig = {
-  apiKey: "AIzaSyDN1YO1h5jGo3j6KSxEzVFGlIIiOnzkdDs",
+  apiKey: process.env.EXPO_PUBLIC_FIREBASE_API_KEY,
   authDomain: "saferoute-yopal.firebaseapp.com",
   projectId: "saferoute-yopal",
   storageBucket: "saferoute-yopal.firebasestorage.app",
