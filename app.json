@@ -19,26 +19,33 @@
       "infoPlist": {
         "NSLocationWhenInUseUsageDescription": "SafeRoute Yopal usa tu ubicación para alertarte de zonas de riesgo vial en tiempo real.",
         "NSLocationAlwaysAndWhenInUseUsageDescription": "SafeRoute Yopal necesita acceso continuo al GPS para alertarte incluso con la app en segundo plano.",
-        "UIBackgroundModes": ["location"]
+        "UIBackgroundModes": [
+          "location"
+        ]
       }
     },
     "android": {
-      "package": "com.saferoute.yopal",
-      "versionCode": 1,
-      "adaptiveIcon": {
-        "foregroundImage": "./assets/adaptive-icon.png",
-        "backgroundColor": "#ffffff"
-      },
-      "edgeToEdgeEnabled": true,
-      "permissions": [
-        "ACCESS_COARSE_LOCATION",
-        "ACCESS_FINE_LOCATION",
-        "ACCESS_BACKGROUND_LOCATION",
-        "FOREGROUND_SERVICE",
-        "FOREGROUND_SERVICE_LOCATION",
-        "VIBRATE"
-      ]
-    },
+  "package": "com.saferoute.yopal",
+  "versionCode": 1,
+  "adaptiveIcon": {
+    "foregroundImage": "./assets/adaptive-icon.png",
+    "backgroundColor": "#ffffff"
+  },
+  "edgeToEdgeEnabled": true,
+  "config": {
+    "googleMaps": {
+      "apiKey": "TU_API_KEY_AQUI"
+    }
+  },
+  "permissions": [
+    "ACCESS_COARSE_LOCATION",
+    "ACCESS_FINE_LOCATION",
+    "ACCESS_BACKGROUND_LOCATION",
+    "FOREGROUND_SERVICE",
+    "FOREGROUND_SERVICE_LOCATION",
+    "VIBRATE"
+  ]
+}
     "web": {
       "favicon": "./assets/favicon.png"
     },
@@ -53,10 +60,14 @@
       [
         "expo-notifications",
         {
-          "icon": "./assets/notification-icon.png",
           "color": "#cc0000"
         }
       ]
-    ]
+    ],
+    "extra": {
+      "eas": {
+        "projectId": "198ec74e-788b-4308-bf3a-c068337a3418"
+      }
+    }
   }
 }
