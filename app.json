@@ -34,7 +34,7 @@
   "edgeToEdgeEnabled": true,
   "config": {
     "googleMaps": {
-      "apiKey": "tu_api_key_de_google_maps_aqui"
+      "apiKey": "AIzaSyDI671CPtvYxBmrWW6NELPr2aIGJW6MxcE"
     }
   },
   "permissions": [
